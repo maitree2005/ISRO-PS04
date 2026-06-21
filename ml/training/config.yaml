@@ -1,0 +1,22 @@
+model:
+  name: "nvidia/mit-b2"
+  num_classes: 2
+
+training:
+  batch_size: 4
+  learning_rate: 6e-5
+  epochs: 20
+  use_cuda: false
+  checkpoint_dir: "ml/checkpoints"
+  dice_weight: 1.0
+  topology_weight: 0.5
+  topology_kernel: 5
+
+data:
+  train_images: "ml/data/images/train"
+  train_masks: "ml/data/masks/train"
+  val_images: "ml/data/images/val"
+  val_masks: "ml/data/masks/val"
+
+augmentation:
+  synthetic_occlusion_prob: 0.4
