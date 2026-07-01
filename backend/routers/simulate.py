@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import networkx as nx
+import ast
 
 from backend.services import graph_store
 from graph.centrality import compute_resilience_index
@@ -33,11 +34,21 @@ def simulate_removal(req: SimRequest):
         )
 
     # -----------------------------------------
+    # Convert string to tuple
+    # -----------------------------------------
+
+    try:
+        node = tuple(ast.literal_eval(req.node_id))
+    except Exception:
+        node = req.node_id
+
+    # -----------------------------------------
     # DEBUG: Print all nodes
     # -----------------------------------------
 
     print("\n========== GRAPH NODES ==========")
     print(list(G.nodes()))
+    print("Requested Node:", node)
     print("=================================\n")
 
     G = G.copy()
@@ -46,10 +57,10 @@ def simulate_removal(req: SimRequest):
     # Validate node
     # -----------------------------------------
 
-    if req.node_id not in G.nodes:
+    if node not in G.nodes:
         raise HTTPException(
             status_code=404,
-            detail=f"Node '{req.node_id}' not found."
+            detail=f"Node '{node}' not found."
         )
 
     # -----------------------------------------
@@ -67,7 +78,7 @@ def simulate_removal(req: SimRequest):
     # Remove Node
     # -----------------------------------------
 
-    G.remove_node(req.node_id)
+    G.remove_node(node)
 
     # -----------------------------------------
     # Metrics AFTER removal
@@ -89,7 +100,7 @@ def simulate_removal(req: SimRequest):
 
     resilience = compute_resilience_index(
         graph_store.get_graph(),
-        [req.node_id]
+        [node]
     )
 
     resilience_score = None
@@ -134,7 +145,7 @@ def simulate_removal(req: SimRequest):
 
     return JSONResponse(
         {
-            "removed_node": req.node_id,
+            "removed_node": str(node),
             "before": {
                 "nodes": before_nodes,
                 "edges": before_edges,

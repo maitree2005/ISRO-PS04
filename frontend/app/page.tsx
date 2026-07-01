@@ -1,13 +1,12 @@
-"use client"
-import dynamic from 'next/dynamic'
-import React from 'react'
+"use client";
 
-const Map = dynamic(() => import('../components/Map'), { ssr: false })
+import dynamic from "next/dynamic";
 
-export default function Page() {
-  return (
-    <main style={{ height: '100vh', margin: 0 }}>
-      <Map />
-    </main>
-  )
+const MapComponent = dynamic(() => import("../components/Map"), {
+  ssr: false,
+  loading: () => <div style={{ padding: 20 }}>Loading map...</div>,
+});
+
+export default function Home() {
+  return <MapComponent />;
 }

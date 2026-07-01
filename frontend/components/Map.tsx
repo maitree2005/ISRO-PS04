@@ -28,17 +28,17 @@ export default function MapComponent() {
   const [uploading, setUploading] = useState(false)
   const [maskUrl, setMaskUrl] = useState(null)
   const fileInputRef = useRef(null)
-  const [mapInstance, setMapInstance] = useState(null)
+  //const [mapInstance, setMapInstance] = useState(null)
 
   useEffect(() => {
     // Fetch graph GeoJSON
-    fetch('/api/graph')
+    fetch('http://127.0.0.1:8000/api/graph')
       .then((r) => r.json())
       .then((data) => setGeojson(data))
       .catch((err) => console.error(err))
 
     // Fetch criticality scores
-    fetch('/api/criticality')
+    fetch('http://127.0.0.1:8000/api/criticality')
       .then((r) => r.json())
       .then((data) => {
         const list = data.top_bottlenecks || []
@@ -47,31 +47,35 @@ export default function MapComponent() {
       .catch(() => {})
 
     // Fetch available model checkpoints and preloaded status
-    fetch('/api/models/list')
+    fetch('http://127.0.0.1:8000/api/models/list')
       .then((r) => r.json())
       .then((data) => setModelList(data || []))
       .catch(() => setModelList([]))
 
-    fetch('/api/models/status')
+    fetch('http://127.0.0.1:8000/api/models/status')
       .then((r) => r.json())
       .then((data) => setPreloadedHandles(data.preloaded || []))
       .catch(() => setPreloadedHandles([]))
   }, [])
 
-  const onNodeClick = async (node) => {
-    try {
-      const resp = await fetch('/api/simulate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ node_id: node.node_id })
-      })
-      const data = await resp.json()
-      setSimResult(data)
-    } catch (e) {
-      console.error(e)
-    }
-  }
+  const onNodeClick = async (node: any) => {
+  try {
+    const resp = await fetch("http://127.0.0.1:8000/api/simulate", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        node_id: node.node_id,
+      }),
+    });
 
+    const data = await resp.json();
+    setSimResult(data);
+  } catch (e) {
+    console.error(e);
+  }
+};
   const colorForScore = (s) => {
     // s expected 0..1
     if (s === null || s === undefined) return '#00ff00'
@@ -81,20 +85,38 @@ export default function MapComponent() {
   }
 
   const exportGeoJSON = async () => {
-    try {
-      const resp = await fetch('/api/graph')
-      const data = await resp.json()
-      const blob = new Blob([JSON.stringify(data)], { type: 'application/geo+json' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'graph.geojson'
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch (e) {
-      console.error(e)
+  try {
+    const resp = await fetch("http://127.0.0.1:8000/api/graph");
+
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
     }
+
+    const data = await resp.json();
+
+    const blob = new Blob(
+      [JSON.stringify(data, null, 2)],
+      { type: "application/geo+json" }
+    );
+
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "graph.geojson";
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    window.URL.revokeObjectURL(url);
+
+    console.log("✅ GeoJSON exported successfully.");
+  } catch (err) {
+    console.error("GeoJSON Export Error:", err);
+    alert("Failed to export GeoJSON. Make sure the FastAPI backend is running.");
   }
+};
 
   const exportCSV = async () => {
     try {
@@ -163,7 +185,11 @@ export default function MapComponent() {
 
   return (
     <div style={{ height: '100vh', width: '100%', position: 'relative' }}>
-      <MapContainer center={[12.9716, 77.5946]} zoom={12} style={{ height: '100%', width: '100%' }} whenCreated={(m) => setMapInstance(m)}>
+      <MapContainer
+  center={[12.9716, 77.5946]}
+  zoom={12}
+  style={{ height: '100%', width: '100%' }}
+>
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='© OpenStreetMap contributors'
@@ -190,15 +216,6 @@ export default function MapComponent() {
             </Popup>
           </CircleMarker>
         ))}
-        {maskUrl && mapInstance && (() => {
-          // place the image overlay to cover the current map view bounds
-          const bounds = mapInstance.getBounds()
-          const sw = bounds.getSouthWest()
-          const ne = bounds.getNorthEast()
-          return (
-            <ImageOverlay url={maskUrl} bounds={[[sw.lat, sw.lng], [ne.lat, ne.lng]]} opacity={0.6} />
-          )
-        })()}
       </MapContainer>
 
       <ControlPanel result={simResult} onClose={() => setSimResult(null)} />
